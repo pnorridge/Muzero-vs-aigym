@@ -1,6 +1,6 @@
 
 from game import Game, gameStateMinMax
-import random
+import numpy.random as random
 import pickle
 import numpy as np
 
@@ -25,6 +25,10 @@ class ReplayBuffer():
     def sample_game(self) -> Game:
         return random.choice(self.buffer)
 
+    def sample_game_with_bias(self) -> Game:
+        bias = np.array(range(1,len(self.buffer)+1))+self.window_size/2 
+        return random.choice(self.buffer, p = bias/sum(bias))
+
     # Identify a suitable game position.    
     def sample_position(self, game: Game) -> int:
         # Paper: Sample position from game either uniformly or according to some priority. 
@@ -34,7 +38,7 @@ class ReplayBuffer():
     def sample_batch(self, num_unroll_steps: int, td_steps: int): 
         
         # select a random selection of games
-        games = [self.sample_game() for _ in range(self.batch_size)] 
+        games = [self.sample_game_with_bias() for _ in range(self.batch_size)] 
          
         # for each game select a random starting position
         game_pos = [(g, self.sample_position(g)) for g in games] 

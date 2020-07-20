@@ -3,6 +3,7 @@
 from typing import List, Dict, NamedTuple, Optional
 import math
 import random
+import statistics
 
 ## object used to represent the actions
 class Action(object):
@@ -45,9 +46,8 @@ class Policy(object):
     
     def as_probabilities(self):
   
-        # TODO
-        # during training, got an overflow error here!!
-        tmp = [math.exp(a) for a in self.content]
+        mn = statistics.mean(self.content)
+        tmp = [math.exp(a-mn) for a in self.content]
         policy_sum = sum(tmp)
 
         tmp = [i/policy_sum for i in tmp]

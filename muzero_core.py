@@ -63,7 +63,7 @@ class MuZeroConfig(object):
 
 
 
-def make_aigym_config(name):
+def make_aigym_config(name, hidden_state_size: int = 2):
 
     # Temporarily create game to extract useful information
     Game.environment = name
@@ -77,7 +77,7 @@ def make_aigym_config(name):
     # Network dimensions
     Network.action_count = len(action_list)
     Network.input_size = len(state)
-    Network.N = 2 # hidden state size
+    Network.N = hidden_state_size # hidden state size
     Network.grad_scale = (1.,1.,1.) # Extra parameter to allow the balance between losses to be adjusted
 
     # MCTS constants
@@ -132,8 +132,7 @@ def train_network(config: MuZeroConfig, storage: SharedStorage, replay_buffer: R
     
     learning_rate = config.lr_init * config.lr_decay_rate**(network.training_steps()/config.lr_decay_steps)
     network.optimiser = tf.keras.optimizers.SGD(learning_rate, 0.9)
-    experiment.log_metric("lr", learning_rate, step=network.training_steps)
-
+    
     for i in range(config.training_steps()):
         
         if i % config.checkpoint_interval == 0:

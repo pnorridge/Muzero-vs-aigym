@@ -76,12 +76,17 @@ class Node(object):
         # essentially, this is a weighted combination of the prior and the value estimate 
         # coming from the UCB process. as the number of visits increases the value is 
         # increasingly biased towards the MCTS determined value
+        #
+        # Tweaked from the original in an attempt to improve performance.
+        # Previously, pb_c = 0 on first call. This led to the last child always being selected
+        # in that case. Also, with negative rewards, the value_score of the selected child will 
+        # always be 1 on the second call. Hence, there is a bais towards the last child.
         pb_c = math.log((self.visit_count + Node.pb_c_base + 1) / Node.pb_c_base) + Node.pb_c_init
-        pb_c *= math.sqrt(self.visit_count) / (child.visit_count + 1)
+        pb_c *= math.sqrt(self.visit_count+1) / (child.visit_count + 1)
         prior_score = pb_c * child.prior 
 
-        if child.visit_count > 0:
-            value_score = child.reward + discount * min_max_stats.normalize(child.value())
+        if child.visit_count > 0 and self.visit_count > 3:
+            value_score = min_max_stats.normalize(child.reward + discount * child.value())
         else:
             value_score = 0.
         
@@ -90,12 +95,15 @@ class Node(object):
 
     # Select an action based on the number of recorded visits to the child nodes 
     # - used for the final decision
-    def select_action_with_temperature(self, T: float):
+    # Added option for espilon in selection. For LunarLander it seems hard to get a 
+    # good search with pure MCTS.
+    def select_action_with_temperature(self, T: float, epsilon: float = 0.0):
         visit_counts = [(child.visit_count, action) for action, child in self.children.items()]
-        tmp = [math.exp(c/T) for c,a in visit_counts]
+        tmp = [math.exp(c/T)+epsilon for c,a in visit_counts]
         exp_sum = sum(tmp)
         n = np.random.choice(len(visit_counts), 1, p=np.asarray(tmp)/exp_sum)
         return visit_counts[n[0]][1]
+
 
 
 ## high-level MCTS functions 

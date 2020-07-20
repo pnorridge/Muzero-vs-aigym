@@ -2,6 +2,7 @@
 from typing import List, Dict, NamedTuple, Tuple
 from gamecomponents import Action, Policy, RandomAction
 import tensorflow as tf
+import pickle
 from tensorflow.keras import layers
 from tensorflow.keras import Model
 from categorised_scalar import categorise, decategorise
@@ -209,7 +210,6 @@ class Network():
         vLoss = 0
         rLoss = 0
         pLoss = 0
-        batch_size = len(batch)
         
         # first, find the data from the games - some assembly required
         images, actions, targets = zip(*batch)
@@ -312,16 +312,16 @@ class Network():
         self.prediction.save('predmodel.h5')
         outfile = open('auxdata', 'wb')
         pickle.dump(self.buffer, outfile)
-        pickle.dump(minmax, outfile)
-        pickle.dump(minmax, self.optimiser.learning_rate)
+        pickle.dump(self.minmax, outfile)
+        pickle.dump(self.optimiser.learning_rate, outfile)
         outfile.close()
 
 
     def load_from_file(self):
-        self.representation = keras.models.load_model('repmodel.h5')
-        self.dynamics = keras.models.load_model('dynmodel.h5')
-        self.prediction = keras.models.load_model('predmodel.h5')
-        infile = open(filename, 'rb')
+        self.representation = tf.keras.models.load_model('repmodel.h5')
+        self.dynamics = tf.keras.models.load_model('dynmodel.h5')
+        self.prediction = tf.keras.models.load_model('predmodel.h5')
+        infile = open('auxdata', 'rb')
         self.buffer = pickle.load(infile)
         self.minmax = pickle.load(infile)
         learning_rate = pickle.load(infile)
@@ -344,6 +344,7 @@ class SharedStorage(object):
             return Network()
         
     def save_network(self, step: int, network: Network): 
+        # TODO -- this is saving the reference not a copy
         self._networks[step] = network
 
     

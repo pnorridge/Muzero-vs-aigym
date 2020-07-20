@@ -7,4 +7,4 @@ The goal is to make something that runs reasonably on Google Colab or Paperspace
 
 I've changed the training function so that it does more in parallel and minimises the number of transfers to the GPU.
 
-The top-level jupyter notebook tries to keep long games to a minimum as this is the slow part. Probably this inhibits the convergence and further refinement would help. 
+The top-level jupyter notebooks try to keep long games to a minimum as this is the slow part. Probably this inhibits the convergence and further refinement would help. 
