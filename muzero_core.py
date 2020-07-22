@@ -9,6 +9,7 @@ import tensorflow as tf
 from typing import Dict, List, Optional
 from helpers import KnownBounds
 
+#
 def visit_softmax_temperature(num_moves, training_steps  = 10000, step_limit: int = 10000):
   if training_steps < step_limit:
     return 10.0-9.*training_steps/step_limit
@@ -20,7 +21,6 @@ def visit_softmax_temperature(num_moves, training_steps  = 10000, step_limit: in
  
 # Basic configuration object. 
 # We break out some of the parameters to be class attributes
-
 
 class MuZeroConfig(object):
 
@@ -66,7 +66,7 @@ class MuZeroConfig(object):
         g = Game(self.discount)
         return g
 
-
+# Create an AI Gym configuration.
 
 def make_aigym_config(name):
 
@@ -118,17 +118,29 @@ def play_game(config: MuZeroConfig, network: Network) -> Game:
         root = Node(0)
         current_observation = game.make_image(-1)
 
+        # fill in the essential information for the root node, using
+        # the network output for the current state
         root.expand_node(game.to_play(), game.legal_actions(),
                         network.initial_inference(current_observation)) 
+        
+        # Exploration is a combination of adding noise to the MCTS process 
+        # and selecting the final action with temperature. The latter makes 
+        # it more likely that an action/child with low visits is selected; 
+        # the former makes it more likely that an action/child will be visited 
+        # at least once.
         root.add_exploration_noise()
 
+        # Run the MCTS algorithm starting at root.
         run_mcts(config, root, game.action_history(), network)
         
+        # Make the temperature dynamic over a game or training
         T = config.visit_softmax_temperature(num_moves=len(game.history), training_steps = network.training_steps())
-
-        action = root.select_action_with_temperature(T, 0.01) 
-
+        
+        action = root.select_action_with_temperature(T) 
         game.apply(action)
+
+        # store in the gmae object all the information we will used for 
+        # training
         game.store_search_statistics(root) 
 
     return game
@@ -136,15 +148,14 @@ def play_game(config: MuZeroConfig, network: Network) -> Game:
 ##
 
 # Train the network
-def train_network(config: MuZeroConfig, storage: SharedStorage, replay_buffer: ReplayBuffer, experiment):
+def train_network(config: MuZeroConfig, storage: SharedStorage, replay_buffer: ReplayBuffer):
     
     network = storage.latest_network() # recover the latest network to be updated
     
     learning_rate = config.lr_init * config.lr_decay_rate**(network.training_steps()/config.lr_decay_steps)
-    #network.optimiser = tf.keras.optimizers.SGD(learning_rate, 0.9)
+    
     network.optimiser.learning_rate = learning_rate
-    experiment.log_metric("lr", learning_rate, step=network.training_steps())
-
+    
     for i in range(config.training_steps+1):
         
         if i % config.checkpoint_interval == 0:
@@ -156,8 +167,7 @@ def train_network(config: MuZeroConfig, storage: SharedStorage, replay_buffer: R
 
         if i % 100 == 0:
             print((i, l))
-            experiment.log_metric("loss", sum(list(l)), step=network.training_steps())
-
+            
     storage.save_network(network.training_steps(), network)
     
     return i

@@ -202,6 +202,9 @@ class Network():
     ##
     # training
     
+    # biggest change from the paper is here. I have essentially parallelised the 
+    # outer loop so that the training calculates all batches in one go. With a GPU,
+    # this optimises the amount of data transfers.
     def update_weights(self, batch, weight_decay: float, hidden_state_dampen: float = 0.5):
 
         self.update_count += 1
