@@ -39,7 +39,7 @@ class Game(object):
       
 
     def image_size(self) -> Tuple[int]: 
-        return self.environment.observation_space.shape()
+        return self.environment.observation_space.shape
 
     ##
 

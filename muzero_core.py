@@ -74,7 +74,7 @@ def make_aigym_config(name):
     Game.environment = name
     g = Game(0.9)
     action_list = g.legal_actions()
-    state_len = g.image_size()[0]
+    state_len = g.image_size[0]
 
     # normaliser
     gameStateMinMax.__init__([state_len])
