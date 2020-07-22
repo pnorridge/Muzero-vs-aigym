@@ -74,20 +74,20 @@ def make_aigym_config(name):
     Game.environment = name
     g = Game(0.9)
     action_list = g.legal_actions()
-    state = g.make_image(-1)
+    state_len = g.image_size()[0]
 
     # normaliser
-    gameStateMinMax.__init__([len(state)])
+    gameStateMinMax.__init__([state_len])
     
     # Policy
     Policy.action_list = action_list
 
     # Network dimensions
     Network.action_count = len(action_list)
-    Network.input_size = len(state)
+    Network.input_size = state_len
     Network.N = 2 # hidden state size
     Network.grad_scale = (1.,1.,1.) # Extra parameter to allow the balance between losses to be adjusted
-    Network.input_size = len(state)
+    Network.input_size = state_len
 
     # MCTS constants
     Node.root_dirichlet_alpha = 0.3

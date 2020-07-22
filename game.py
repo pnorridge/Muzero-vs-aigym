@@ -1,6 +1,6 @@
 
 import gym
-from typing import List
+from typing import List, Tuple
 from gym.spaces import Discrete
 from mcts import Node
 from gamecomponents import Action, Player, ActionHistory, Policy
@@ -37,6 +37,10 @@ class Game(object):
     def legal_actions(self) -> List[Action]:
         return self.action_list
       
+
+    def image_size(self) -> Tuple[int]: 
+        return self.environment.observation_space.shape()
+
     ##
 
     # whose turn is it? Not relevant for cartpole
