@@ -52,10 +52,9 @@ class Node(object):
 
         # the policy logits from the network act as a prior to enable the 
         # MCTS to focus on likely actions.
-        # However, for the 2 actions of cartpole this is unnecessary.
         for action, p in network_output.policy_logits.as_probabilities():
-            #self.children[action] = Node(p)
-            self.children[action] = Node(0.5)
+            self.children[action] = Node(p)
+            #self.children[action] = Node(0.5)
         
     # alter the prior to aid exploration    
     def add_exploration_noise(self):
@@ -79,7 +78,7 @@ class Node(object):
         #
         # Tweaked from the original in an attempt to improve performance.
         # Previously, pb_c = 0 on first call. This led to the last child always being selected
-        # in that case. Also, with negative rewards, the value_score of the selected child will 
+        # on that iteration. Also, with negative rewards, the value_score of the selected child will 
         # always be 1 on the second call. Hence, there is a bais towards the last child.
         pb_c = math.log((self.visit_count + Node.pb_c_base + 1) / Node.pb_c_base) + Node.pb_c_init
         pb_c *= math.sqrt(self.visit_count+1) / (child.visit_count + 1)

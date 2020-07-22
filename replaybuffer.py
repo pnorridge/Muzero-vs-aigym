@@ -35,11 +35,14 @@ class ReplayBuffer():
         return random.randint(0,max([game.length()-2,1]))
 
     # Extract one batch from the stored games
-    def sample_batch(self, num_unroll_steps: int, td_steps: int): 
+    def sample_batch(self, num_unroll_steps: int, td_steps: int, with_bias = False): 
         
         # select a random selection of games
-        games = [self.sample_game_with_bias() for _ in range(self.batch_size)] 
-         
+        if with_bias:
+            games = [self.sample_game_with_bias() for _ in range(self.batch_size)] 
+        else:
+            games = [self.sample_game() for _ in range(self.batch_size)]  
+            
         # for each game select a random starting position
         game_pos = [(g, self.sample_position(g)) for g in games] 
         

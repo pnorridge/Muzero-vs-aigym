@@ -1,6 +1,6 @@
 from mcts import Node, run_mcts
 from gamecomponents import Policy
-from game import Game
+from game import Game, gameStateMinMax
 from replaybuffer import ReplayBuffer
 from network import Network, SharedStorage
 import random
@@ -9,16 +9,18 @@ import tensorflow as tf
 from typing import Dict, List, Optional
 from helpers import KnownBounds
 
-def visit_softmax_temperature(num_moves, training):
-  if num_moves < 30 and training:
-    return 2.0
+def visit_softmax_temperature(num_moves, training_steps  = 10000, step_limit: int = 10000):
+  if training_steps < step_limit:
+    return 10.0-9.*training_steps/step_limit
   else:
-    return 1.0  
+    return 1.0   
+
 
 ##
  
 # Basic configuration object. 
 # We break out some of the parameters to be class attributes
+
 
 class MuZeroConfig(object):
 
@@ -56,14 +58,17 @@ class MuZeroConfig(object):
         self.lr_decay_rate = lr_decay_rate
         self.lr_decay_steps = lr_decay_steps
 
+        self.biased_game_sampling = False
 
+        self.visit_softmax_temperature = visit_softmax_temperature_fn
+        
     def new_game(self):
         g = Game(self.discount)
         return g
 
 
 
-def make_aigym_config(name, hidden_state_size: int = 2):
+def make_aigym_config(name):
 
     # Temporarily create game to extract useful information
     Game.environment = name
@@ -71,14 +76,18 @@ def make_aigym_config(name, hidden_state_size: int = 2):
     action_list = g.legal_actions()
     state = g.make_image(-1)
 
+    # normaliser
+    gameStateMinMax.__init__([len(state)])
+    
     # Policy
     Policy.action_list = action_list
 
     # Network dimensions
     Network.action_count = len(action_list)
     Network.input_size = len(state)
-    Network.N = hidden_state_size # hidden state size
+    Network.N = 2 # hidden state size
     Network.grad_scale = (1.,1.,1.) # Extra parameter to allow the balance between losses to be adjusted
+    Network.input_size = len(state)
 
     # MCTS constants
     Node.root_dirichlet_alpha = 0.3
@@ -101,7 +110,7 @@ def make_aigym_config(name, hidden_state_size: int = 2):
 ##
 
 # Play a game using MCTS
-def play_game(config: MuZeroConfig, network: Network, training = False) -> Game:
+def play_game(config: MuZeroConfig, network: Network) -> Game:
 
     game = config.new_game()
 
@@ -115,9 +124,10 @@ def play_game(config: MuZeroConfig, network: Network, training = False) -> Game:
 
         run_mcts(config, root, game.action_history(), network)
         
-        T = visit_softmax_temperature(num_moves=len(game.history), training = training)
+        T = config.visit_softmax_temperature(num_moves=len(game.history), training_steps = network.training_steps())
 
-        action = root.select_action_with_temperature(T) 
+        action = root.select_action_with_temperature(T, 0.01) 
+
         game.apply(action)
         game.store_search_statistics(root) 
 
@@ -126,38 +136,30 @@ def play_game(config: MuZeroConfig, network: Network, training = False) -> Game:
 ##
 
 # Train the network
-def train_network(config: MuZeroConfig, storage: SharedStorage, replay_buffer: ReplayBuffer):
+def train_network(config: MuZeroConfig, storage: SharedStorage, replay_buffer: ReplayBuffer, experiment):
     
     network = storage.latest_network() # recover the latest network to be updated
     
     learning_rate = config.lr_init * config.lr_decay_rate**(network.training_steps()/config.lr_decay_steps)
-    network.optimiser = tf.keras.optimizers.SGD(learning_rate, 0.9)
-    
-    for i in range(config.training_steps()):
+    #network.optimiser = tf.keras.optimizers.SGD(learning_rate, 0.9)
+    network.optimiser.learning_rate = learning_rate
+    experiment.log_metric("lr", learning_rate, step=network.training_steps())
+
+    for i in range(config.training_steps+1):
         
         if i % config.checkpoint_interval == 0:
             storage.save_network(network.training_steps(), network)
 
-        batch = replay_buffer.sample_batch(config.num_unroll_steps, config.td_steps) 
+        batch = replay_buffer.sample_batch(config.num_unroll_steps, config.td_steps, config.biased_game_sampling) 
 
         l = network.update_weights(batch, config.weight_decay, config.hidden_state_dampen)
 
         if i % 100 == 0:
             print((i, l))
-
+            experiment.log_metric("loss", sum(list(l)), step=network.training_steps())
 
     storage.save_network(network.training_steps(), network)
     
-    return l
+    return i
 
 ##
-
-# Update the stored games with the values the network would predict now
-# This allows us to take advantage of old games.
-def refresh_values(storage: SharedStorage, replay_buffer: ReplayBuffer):
-    network = storage.latest_network()
-    for game in replay_buffer.buffer:
-        for step in range(game.length()):
-            _, value, _, _ = network.initial_inference(game.make_image(step))    
-            game.root_values[step] = value[0]
-        
