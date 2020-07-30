@@ -122,6 +122,11 @@ def backpropagate(search_path: List[Node], value: float, to_play: Player, discou
 # the MCTS process
 def run_mcts(config: MCTSConfig, root: Node, action_history: ActionHistory, network: Network):
     
+    # Create a new MinMaxStats instance. Why do we need a 
+    # new instance each time? This is rescaled
+    # by the network estimate of value, so if a network
+    # generates a large outlier, it can distort the MCTS
+    # prior/value balance.
     min_max_stats = MinMaxStats(config.known_bounds)
 
     # Run a number of simulated futures

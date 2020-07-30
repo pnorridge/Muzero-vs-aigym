@@ -7,7 +7,9 @@ The goal is to make something that runs reasonably on Google Colab or Paperspace
 
 I've changed the training function so that it does more in parallel and minimises the number of transfers to the GPU.
 
-The top-level jupyter notebooks try to keep long games to a minimum as this is the slow part. So, Cartpole runs many games at the start when they will be short and adds when the the is a noticable improvement in performance. LunarLander just adds a new game after each training session. LunarLander selects games with a bias to the more recent ones. This attempt to keep things quick probably inhibits the convergence and further refinement would help. 
+The network is just simple, with only fully connected layers. 
+
+The top-level jupyter notebooks try to keep long games to a minimum as this is the slow part. So, Cartpole runs many games at the start when they will be short and adds when there is a noticable improvement in performance. LunarLander just adds a new game after each training session. LunarLander selects games with a bias to the more recent ones. This attempt to keep things quick probably inhibits the convergence and further refinement would help. 
 
 Other good resources:
 
