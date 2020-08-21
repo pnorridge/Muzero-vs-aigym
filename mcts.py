@@ -127,6 +127,9 @@ def run_mcts(config: MCTSConfig, root: Node, action_history: ActionHistory, netw
     # by the network estimate of value, so if a network
     # generates a large outlier, it can distort the MCTS
     # prior/value balance.
+    # Also, the value function may be very different in 
+    # each MCTS run (thanks to Julien Schrittweiser for this 
+    # clarification)
     min_max_stats = MinMaxStats(config.known_bounds)
 
     # Run a number of simulated futures
